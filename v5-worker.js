@@ -1,11 +1,46 @@
+(function (g) {
+  if (typeof g.globalThis === "undefined") g.globalThis = g;
+  function def(o, k, v) {
+    if (!o[k]) Object.defineProperty(o, k, { value: v, writable: true, configurable: true });
+  }
+  def(String.prototype, "replaceAll", function (s, r) {
+    if (s instanceof RegExp) return this.replace(s, r);
+    return this.split(s).join(typeof r === "function" ? r(s) : r);
+  });
+  def(String.prototype, "trimStart", String.prototype.trimLeft);
+  def(String.prototype, "trimEnd", String.prototype.trimRight);
+  def(Object, "fromEntries", function (it) {
+    var o = {};
+    Array.from(it).forEach(function (e) { o[e[0]] = e[1]; });
+    return o;
+  });
+  def(Object, "hasOwn", function (o, k) { return Object.prototype.hasOwnProperty.call(o, k); });
+  def(Array.prototype, "flat", function (d) {
+    d = d === undefined ? 1 : Number(d);
+    return d < 1 ? Array.prototype.slice.call(this) : Array.prototype.reduce.call(this, function (a, v) {
+      return a.concat(Array.isArray(v) ? Array.prototype.flat.call(v, d - 1) : v);
+    }, []);
+  });
+  def(Array.prototype, "flatMap", function (f, t) { return Array.prototype.map.call(this, f, t).flat(); });
+  def(Promise.prototype, "finally", function (f) {
+    var P = this.constructor;
+    return this.then(function (v) { return P.resolve(f()).then(function () { return v; }); },
+      function (e) { return P.resolve(f()).then(function () { throw e; }); });
+  });
+  def(Promise, "allSettled", function (ps) {
+    return Promise.all(Array.from(ps).map(function (p) {
+      return Promise.resolve(p).then(function (v) { return { status: "fulfilled", value: v }; },
+        function (e) { return { status: "rejected", reason: e }; });
+    }));
+  });
+  if (typeof g.queueMicrotask !== "function") g.queueMicrotask = function (f) { Promise.resolve().then(f); };
+})(typeof self !== "undefined" ? self : this);
 "use strict";
 (() => {
   var __getOwnPropNames = Object.getOwnPropertyNames;
   var __commonJS = (cb, mod) => function __require() {
     return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
   };
-
-  // node_modules/@babel/runtime/helpers/interopRequireDefault.js
   var require_interopRequireDefault = __commonJS({
     "node_modules/@babel/runtime/helpers/interopRequireDefault.js"(exports, module) {
       function _interopRequireDefault2(obj) {
@@ -16,8 +51,6 @@
       module.exports = _interopRequireDefault2, module.exports.__esModule = true, module.exports["default"] = module.exports;
     }
   });
-
-  // node_modules/@babel/runtime/helpers/typeof.js
   var require_typeof = __commonJS({
     "node_modules/@babel/runtime/helpers/typeof.js"(exports, module) {
       function _typeof(o) {
@@ -31,8 +64,6 @@
       module.exports = _typeof, module.exports.__esModule = true, module.exports["default"] = module.exports;
     }
   });
-
-  // node_modules/@babel/runtime/helpers/regeneratorRuntime.js
   var require_regeneratorRuntime = __commonJS({
     "node_modules/@babel/runtime/helpers/regeneratorRuntime.js"(exports, module) {
       var _typeof = require_typeof()["default"];
@@ -324,8 +355,6 @@
       module.exports = _regeneratorRuntime, module.exports.__esModule = true, module.exports["default"] = module.exports;
     }
   });
-
-  // node_modules/@babel/runtime/regenerator/index.js
   var require_regenerator = __commonJS({
     "node_modules/@babel/runtime/regenerator/index.js"(exports, module) {
       var runtime = require_regeneratorRuntime()();
@@ -341,8 +370,6 @@
       }
     }
   });
-
-  // node_modules/@babel/runtime/helpers/asyncToGenerator.js
   var require_asyncToGenerator = __commonJS({
     "node_modules/@babel/runtime/helpers/asyncToGenerator.js"(exports, module) {
       function asyncGeneratorStep(gen, resolve, reject, _next, _throw, key, arg) {
@@ -377,8 +404,6 @@
       module.exports = _asyncToGenerator, module.exports.__esModule = true, module.exports["default"] = module.exports;
     }
   });
-
-  // package/bridge.js
   var require_bridge = __commonJS({
     "package/bridge.js"(exports, module) {
       "use strict";
@@ -498,8 +523,6 @@
       module.exports = Bridge2;
     }
   });
-
-  // package/stremio_core_web.js
   var require_stremio_core_web = __commonJS({
     "package/stremio_core_web.js"(exports) {
       "use strict";
@@ -1233,15 +1256,11 @@
       var _default = exports["default"] = init;
     }
   });
-
-  // wasm-url:./stremio_core_web_bg.wasm
   var require_stremio_core_web_bg = __commonJS({
     "wasm-url:./stremio_core_web_bg.wasm"(exports, module) {
       module.exports = "stremio_core_web_bg.wasm";
     }
   });
-
-  // package/worker.js
   var _interopRequireDefault = require_interopRequireDefault();
   var _regenerator = _interopRequireDefault(require_regenerator());
   var _asyncToGenerator2 = _interopRequireDefault(require_asyncToGenerator());
@@ -1343,8 +1362,3 @@
     };
   })();
 })();
-/*! Bundled license information:
-
-@babel/runtime/helpers/regeneratorRuntime.js:
-  (*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/facebook/regenerator/blob/main/LICENSE *)
-*/

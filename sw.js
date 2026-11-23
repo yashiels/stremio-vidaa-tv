@@ -1,4 +1,41 @@
-var CACHE_NAME = 'stremio-vidaa-v9-9bc0a10';
+(function (g) {
+  if (typeof g.globalThis === "undefined") g.globalThis = g;
+  function def(o, k, v) {
+    if (!o[k]) Object.defineProperty(o, k, { value: v, writable: true, configurable: true });
+  }
+  def(String.prototype, "replaceAll", function (s, r) {
+    if (s instanceof RegExp) return this.replace(s, r);
+    return this.split(s).join(typeof r === "function" ? r(s) : r);
+  });
+  def(String.prototype, "trimStart", String.prototype.trimLeft);
+  def(String.prototype, "trimEnd", String.prototype.trimRight);
+  def(Object, "fromEntries", function (it) {
+    var o = {};
+    Array.from(it).forEach(function (e) { o[e[0]] = e[1]; });
+    return o;
+  });
+  def(Object, "hasOwn", function (o, k) { return Object.prototype.hasOwnProperty.call(o, k); });
+  def(Array.prototype, "flat", function (d) {
+    d = d === undefined ? 1 : Number(d);
+    return d < 1 ? Array.prototype.slice.call(this) : Array.prototype.reduce.call(this, function (a, v) {
+      return a.concat(Array.isArray(v) ? Array.prototype.flat.call(v, d - 1) : v);
+    }, []);
+  });
+  def(Array.prototype, "flatMap", function (f, t) { return Array.prototype.map.call(this, f, t).flat(); });
+  def(Promise.prototype, "finally", function (f) {
+    var P = this.constructor;
+    return this.then(function (v) { return P.resolve(f()).then(function () { return v; }); },
+      function (e) { return P.resolve(f()).then(function () { throw e; }); });
+  });
+  def(Promise, "allSettled", function (ps) {
+    return Promise.all(Array.from(ps).map(function (p) {
+      return Promise.resolve(p).then(function (v) { return { status: "fulfilled", value: v }; },
+        function (e) { return { status: "rejected", reason: e }; });
+    }));
+  });
+  if (typeof g.queueMicrotask !== "function") g.queueMicrotask = function (f) { Promise.resolve().then(f); };
+})(typeof self !== "undefined" ? self : this);
+var CACHE_NAME = "stremio-vidaa-u3-2";
 var ASSETS = [
   "./",
   "./PlusJakartaSans.ttf",
@@ -77,18 +114,11 @@ var ASSETS = [
   "./webtorrent-sw.min.js",
   "./webtorrent.min.js"
 ];
-
-// WebTorrent's streaming-server service worker (pinned + vendored, see
-// upstream/vendor/webtorrent/3.0.21/README.md). A fetch event only ever
-// reaches the SW controlling the page, so its fetch listener must live HERE —
-// registering dist/sw.min.js separately (its docs' scope './' suggestion)
-// would displace this app shell worker. It only respondWith()s URLs under
-// <scope>webtorrent/; everything else passes through to our handler below.
-// Optional: if the script is missing the app shell works, torrent streaming
-// just stays unavailable.
-try { importScripts('./webtorrent-sw.min.js'); } catch (e) { /* torrent streaming unavailable */ }
-
-self.addEventListener('install', function(e) {
+try {
+  importScripts("./webtorrent-sw.min.js");
+} catch (e) {
+}
+self.addEventListener("install", function(e) {
   e.waitUntil(
     caches.open(CACHE_NAME).then(function(cache) {
       return cache.addAll(ASSETS);
@@ -97,44 +127,34 @@ self.addEventListener('install', function(e) {
     })
   );
 });
-
-self.addEventListener('activate', function(e) {
+self.addEventListener("activate", function(e) {
   e.waitUntil(
     caches.keys().then(function(names) {
       return Promise.all(
-        names.filter(function(n) { return n !== CACHE_NAME; })
-             .map(function(n) { return caches.delete(n); })
+        names.filter(function(n) {
+          return n !== CACHE_NAME;
+        }).map(function(n) {
+          return caches.delete(n);
+        })
       );
     }).then(function() {
       return self.clients.claim();
     })
   );
 });
-
-self.addEventListener('fetch', function(e) {
+self.addEventListener("fetch", function(e) {
   var req = e.request;
-  if (req.method !== 'GET') return;
+  if (req.method !== "GET") return;
   if (req.url.indexOf(self.location.origin) !== 0) return;
-
-  // WebTorrent streaming URLs (<origin>/webtorrent/...) belong to the
-  // importScripts'd webtorrent worker above. Plain return — never
-  // respondWith and never cache a media stream into the app shell cache.
-  if (new URL(req.url).pathname.indexOf('/webtorrent') === 0) return;
-
-  // Never touch media range requests. If we ever served video from the
-  // same origin and this handler intercepted, Range semantics break and
-  // seeking stops working. Defensive skip regardless of origin.
-  if (req.headers && req.headers.get('range')) return;
+  if (new URL(req.url).pathname.indexOf("/webtorrent") === 0) return;
+  if (req.headers && req.headers.get("range")) return;
   if (/\.(mkv|mp4|m4v|webm|m3u8|ts|mpd|mov)(\?|$)/i.test(req.url)) return;
-
-  // Only construct normalized request when query string is present
   var normalizedRequest = req;
-  if (req.url.indexOf('?') !== -1) {
+  if (req.url.indexOf("?") !== -1) {
     var url = new URL(req.url);
-    url.search = '';
+    url.search = "";
     normalizedRequest = new Request(url.toString());
   }
-
   function updateCacheFromNetwork() {
     return fetch(req).then(function(response) {
       if (response && response.status === 200) {
@@ -146,17 +166,7 @@ self.addEventListener('fetch', function(e) {
       return response;
     });
   }
-
-  var isAppShellRequest =
-    req.mode === 'navigate' ||
-    req.destination === 'document' ||
-    req.destination === 'script' ||
-    req.destination === 'worker' ||
-    req.destination === 'font' ||
-    req.url.endsWith('.html') ||
-    req.url.endsWith('.js') ||
-    req.url.endsWith('.wasm');
-
+  var isAppShellRequest = req.mode === "navigate" || req.destination === "document" || req.destination === "script" || req.destination === "worker" || req.destination === "font" || req.url.endsWith(".html") || req.url.endsWith(".js") || req.url.endsWith(".wasm");
   if (isAppShellRequest) {
     e.respondWith(
       updateCacheFromNetwork().catch(function() {
@@ -165,7 +175,6 @@ self.addEventListener('fetch', function(e) {
     );
     return;
   }
-
   e.respondWith(
     caches.match(normalizedRequest).then(function(cached) {
       var fetchPromise = updateCacheFromNetwork().catch(function() {
@@ -175,7 +184,6 @@ self.addEventListener('fetch', function(e) {
     })
   );
 });
-
-self.addEventListener('message', function(e) {
-  if (e.data === 'skipWaiting') self.skipWaiting();
+self.addEventListener("message", function(e) {
+  if (e.data === "skipWaiting") self.skipWaiting();
 });
