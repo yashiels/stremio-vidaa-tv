@@ -35,7 +35,7 @@
   });
   if (typeof g.queueMicrotask !== "function") g.queueMicrotask = function (f) { Promise.resolve().then(f); };
 })(typeof self !== "undefined" ? self : this);
-var CACHE_NAME = "stremio-vidaa-u3-2";
+var CACHE_NAME = "stremio-vidaa-u3-3";
 var ASSETS = [
   "./",
   "./PlusJakartaSans.ttf",
