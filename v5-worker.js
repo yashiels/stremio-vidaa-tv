@@ -35,6 +35,32 @@
   });
   if (typeof g.queueMicrotask !== "function") g.queueMicrotask = function (f) { Promise.resolve().then(f); };
 })(typeof self !== "undefined" ? self : this);
+(function () {
+  var useAsm = /asm=1/.test(self.location.search) || typeof WebAssembly === "undefined" || typeof WebAssembly.instantiateStreaming !== "function";
+  if (!useAsm) return;
+  var asmVersion = (self.location.search.match(/[?&]v=([^&]+)/) || [])[1] || "0";
+  function note(s) { try { if (/dbg=1/.test(self.location.search)) self.postMessage({ __dbg: s }); } catch (e) {} }
+  var realFetch = self.fetch;
+  self.fetch = function (input) {
+    var url = typeof input === "string" ? input : input && input.url ? input.url : String(input);
+    if (/stremio_core_web_bg\.wasm/.test(url)) {
+      note("asm: skipping wasm download");
+      return Promise.resolve(new Response(new ArrayBuffer(8)));
+    }
+    return realFetch.apply(self, arguments);
+  };
+  var WA = self.WebAssembly || (self.WebAssembly = {});
+  WA.instantiate = function (bytes, imports) {
+    var t0 = Date.now();
+    note("asm: loading core-asm.js");
+    importScripts("core-asm.js?v=" + asmVersion);
+    note("asm: parsed in " + (Date.now() - t0) + "ms, instantiating");
+    var exports = self.__stremioAsm({ wbg: imports.wbg });
+    note("asm: ready in " + (Date.now() - t0) + "ms");
+    return Promise.resolve({ instance: { exports: exports }, module: null });
+  };
+  if (typeof WA.Instance !== "function") WA.Instance = function () {};
+})();
 (function () { if (!/dbg=1/.test(self.location.search)) return;
   function send(s) { try { self.postMessage({ __dbg: String(s).slice(0, 220) }); } catch (e) {} }
   self.addEventListener("unhandledrejection", function (e) {
