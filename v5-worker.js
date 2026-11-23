@@ -35,6 +35,26 @@
   });
   if (typeof g.queueMicrotask !== "function") g.queueMicrotask = function (f) { Promise.resolve().then(f); };
 })(typeof self !== "undefined" ? self : this);
+(function () { if (!/dbg=1/.test(self.location.search)) return;
+  function send(s) { try { self.postMessage({ __dbg: String(s).slice(0, 220) }); } catch (e) {} }
+  self.addEventListener("unhandledrejection", function (e) {
+    var r = e.reason;
+    send("REJ " + (r && (r.stack || r.message) || r));
+  });
+  ["error", "warn"].forEach(function (k) {
+    var orig = console[k];
+    console[k] = function () {
+      try { send(k.toUpperCase() + " " + Array.prototype.map.call(arguments, function (a) { return a && a.message ? a.message : String(a); }).join(" ")); } catch (e) {}
+      return orig.apply(console, arguments);
+    };
+  });
+  var inst = WebAssembly.instantiate;
+  WebAssembly.instantiate = function () {
+    send("wasm instantiate start");
+    return inst.apply(WebAssembly, arguments).then(function (r) { send("wasm instantiate ok"); return r; }, function (e) { send("wasm instantiate FAIL " + e); throw e; });
+  };
+  send("worker alive TE=" + (typeof TextEncoder) + " TD=" + (typeof TextDecoder) + " fetch=" + (typeof fetch) + " IS=" + (typeof WebAssembly.instantiateStreaming));
+})();
 "use strict";
 (() => {
   var __getOwnPropNames = Object.getOwnPropertyNames;

@@ -27,7 +27,7 @@
     9861: (A, k, e) => {
       A.exports = function() {
         try {
-          var w = new Worker("v5-worker.js?v=u3b");
+          var w = new Worker("v5-worker.js?v=u3c");
           w.onerror = function(ev) {
             console.error("[core] Worker error:", ev.message || ev);
           };
